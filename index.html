@@ -223,9 +223,115 @@
       line-height: 1.7;
       font-family: inherit;
     }
+
+    /* 首屏信封 */
+    .envelopeGate {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(ellipse at 50% 20%, rgba(255, 230, 240, 0.95), rgba(250, 248, 245, 0.98));
+      transition: opacity 0.65s ease, visibility 0.65s ease;
+    }
+    .envelopeGate.is-done {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .envelopePaper {
+      position: relative;
+      width: min(420px, 100%);
+      padding: 48px 28px 40px;
+      border-radius: 6px;
+      background: linear-gradient(145deg, #fffefb 0%, #fdf6ef 45%, #faf5f0 100%);
+      border: 1px solid rgba(200, 160, 150, 0.45);
+      box-shadow: 0 18px 48px rgba(80, 40, 50, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+      transform-origin: 50% 0%;
+    }
+    .envelopeGate.is-opening .envelopePaper {
+      animation: paperOut 0.75s ease forwards;
+    }
+    @keyframes paperOut {
+      0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(0.92) translateY(-12px);
+        opacity: 0;
+      }
+    }
+    .envelopeSalutation {
+      margin: 0 0 28px;
+      text-align: center;
+      font-size: clamp(1.1rem, 3.5vw, 1.35rem);
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: rgba(60, 30, 40, 0.92);
+    }
+    .envelopeSealWrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 12px 0 20px;
+      min-height: 120px;
+    }
+    .envelopeSeal {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      border: 3px solid rgba(180, 70, 70, 0.55);
+      background: radial-gradient(circle at 35% 30%, #e85d6e 0%, #b83246 55%, #8c2538 100%);
+      color: #fff9f0;
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: "KaiTi", "STKaiti", "楷体", serif;
+      letter-spacing: 0;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(120, 30, 50, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .envelopeSeal:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 26px rgba(120, 30, 50, 0.4), inset 0 2px 6px rgba(255, 255, 255, 0.3);
+    }
+    .envelopeGate.is-opening .envelopeSeal {
+      animation: sealPop 0.5s ease forwards;
+    }
+    @keyframes sealPop {
+      0% {
+        transform: scale(1) rotate(0deg);
+      }
+      40% {
+        transform: scale(1.12) rotate(-6deg);
+      }
+      100% {
+        transform: scale(0.4) rotate(8deg);
+        opacity: 0;
+      }
+    }
+    .envelopeHint {
+      margin: 0;
+      text-align: center;
+      font-size: 0.9rem;
+      color: rgba(80, 50, 55, 0.55);
+    }
   </style>
 </head>
 <body>
+  <div id="envelopeGate" class="envelopeGate" role="dialog" aria-modal="true" aria-label="致王彩萍女士的信">
+    <div class="envelopePaper">
+      <p class="envelopeSalutation">尊敬的王彩萍女士</p>
+      <div class="envelopeSealWrap">
+        <button type="button" class="envelopeSeal" id="envelopeOpenBtn" aria-label="启封，进入祝福页">启</button>
+      </div>
+      <p class="envelopeHint">点击「启」开启祝福</p>
+    </div>
+  </div>
   <canvas id="fxCanvas" aria-hidden="true"></canvas>
   <div class="hearts" aria-hidden="true">
     <span class="heart" style="left: 8%; animation-duration: 10s; opacity: 0.22; transform: rotate(45deg) scale(0.9);"></span>
@@ -265,7 +371,7 @@
         <figcaption>
           相册会按顺序显示同目录下的 <code>1.jpg</code>～<code>7.jpg</code>。点击图片即可切换下一张。
         </figcaption>
-        <div class="galleryHint" id="galleryHint">当前：第 1 / 6 张（点击图片切换）</div>
+        <div class="galleryHint" id="galleryHint">当前：第 1 / 7 张（点击图片切换）</div>
         <div class="dots" id="dots" aria-hidden="true"></div>
       </figure>
     </section>
@@ -299,8 +405,10 @@
     const wishModal = document.getElementById("wishModal");
     const wishText = document.getElementById("wishText");
     const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const envelopeGate = document.getElementById("envelopeGate");
+    const envelopeOpenBtn = document.getElementById("envelopeOpenBtn");
 
-    // --- 相册：点击图片切换（1.jpg ~ 6.jpg） ---
+    // --- 相册：点击图片切换 ---
     const photos = ["1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg"].map(
       (n) => `./${n}`
     );
@@ -340,7 +448,7 @@
       photo.addEventListener("error", () => {
         if (galleryHint) {
           galleryHint.textContent =
-            "图片加载失败：请确认同目录下存在 1.jpg～6.jpg（文件名需完全一致）。";
+            "图片加载失败：请确认同目录下存在 1.jpg～7.jpg（文件名需完全一致）。";
         }
       });
     }
@@ -412,6 +520,23 @@
     }
 
     tryPlayMuted();
+
+    function closeEnvelopeGate() {
+      if (!envelopeGate || envelopeGate.classList.contains("is-done")) return;
+      envelopeGate.classList.add("is-opening");
+      window.setTimeout(() => {
+        envelopeGate.classList.add("is-done");
+        envelopeGate.setAttribute("aria-hidden", "true");
+        enableSoundAndPlay().catch(() => {});
+      }, 760);
+    }
+
+    if (envelopeOpenBtn) {
+      envelopeOpenBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeEnvelopeGate();
+      });
+    }
 
     function buildWish() {
       const name = (signInput.value || "").trim();
